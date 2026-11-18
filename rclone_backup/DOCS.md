@@ -225,6 +225,40 @@ Enabling `remote_control` starts a **dedicated rc API daemon on port `5572`**, a
 
 ---
 
+## Building from source (local testing)
+
+The released add-on pulls a prebuilt image, so to try local changes you must make the Supervisor build from your checkout:
+
+1. **Remove the `image:` line** from `rclone_backup/config.yaml`. While `image:` is set, the Supervisor pulls that prebuilt image from the registry and **ignores your `Dockerfile` and `rootfs/`** — your changes won't appear and there is no **Rebuild** option. Removing it makes the add-on build locally from the `Dockerfile` (using `build.yaml`).
+
+   ```bash
+   sed -i '/^image:/d' rclone_backup/config.yaml
+   ```
+
+   > Only do this on your test copy — the `image:` line must stay in the committed add-on, since that's what released versions pull. It also reappears whenever you `git checkout` another branch, so re-remove it after switching.
+
+2. Put the add-on folder under `/addons` on the Home Assistant host (via the **Samba share** or **Advanced SSH & Web Terminal** add-on), e.g. clone this repo there. Optionally change `slug:` and `name:` so it doesn't clash with an installed copy.
+
+3. **Settings → Add-ons → Add-on Store → ⋮ → Check for updates**, then install (or **⋮ → Rebuild**) the local add-on. The first build compiles the Go scheduler and downloads rclone, so it takes a few minutes (longer on a Raspberry Pi).
+
+4. Confirm it's your build: the startup log should copy **three** legacy services (`rclone`, `rclone-rc`, `scheduler`) and, with `remote_control` enabled, log `Starting Rclone rc API daemon on :5572 (authenticated)`.
+
+### Testing the rc API with curl
+
+rclone's rc methods are invoked with **POST**, and this daemon runs without a static-file handler, so a **GET** returns `404` even once authenticated. Always use `-X POST`:
+
+```bash
+# auth required -> 401 without credentials
+curl -s -o /dev/null -w '%{http_code}\n' http://<host>:5572/rc/noop
+# 200 with credentials and POST
+curl -s -o /dev/null -w '%{http_code}\n' -u USER:PASS -X POST http://<host>:5572/rc/noop
+curl -u USER:PASS -X POST http://<host>:5572/core/version   # -> {"version":"v1.74.x",...}
+```
+
+Test from a machine *other than* the add-on container (the SSH add-on, or any LAN host) against the **published** host port — that mirrors how CloneAssistant connects. A `docker exec` into the add-on only proves the daemon is up inside its own container.
+
+---
+
 ## Events
 
 > Blueprint to send notifications based on these events. [[source]](https://github.com/jcwillox/home-assistant-blueprints)
