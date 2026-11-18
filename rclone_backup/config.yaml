@@ -1,23 +1,21 @@
 ---
-name: Rclone Backup
+name: Rclone Backup Test
 version: 3.4.1
-slug: rclone_backup
+slug: rclone_backup_test
 description: Automatically sync backup to remote locations using rclone
 arch:
-  - armhf
-  - armv7
   - aarch64
   - amd64
-  - i386
 init: false
-url: https://github.com/jcwillox/hassio-rclone-backup
+url: https://github.com/DarrenBishop/hassio-rclone-backup
+#image: ghcr.io/jcwillox/hassio-rclone-backup/{arch}
 homeassistant_api: true
 ingress: true
 panel_icon: mdi:cloud-sync
 map:
-  - addons:rw
-  - addon_config:rw
-  - all_addon_configs:rw
+  - local_apps:rw
+  - app_config:rw
+  - all_app_configs:rw
   - backup:rw
   - homeassistant_config:rw
   - media:rw
@@ -28,18 +26,17 @@ options:
     - name: Sync Daily Backups
       schedule: 10 4 * * *
       command: sync
-      sources:
-        - "/backup"
-      destination: google:/Backup/Home Assistant
+      source: /backup
+      destination: icloud:/Backup/Home Assistant
       include: []
       exclude: []
       flags: {}
   dry_run: true
-  config_path: "/homeassistant/rclone.conf"
+  config_path: /homeassistant/rclone.conf
   remote_control: false
   rc_username: ""
   rc_password: ""
-  rc_stats: "10s"
+  rc_stats: 10s
 schema:
   jobs:
     - name: str?
@@ -75,7 +72,6 @@ schema:
   rc_job_expire: str?
   rc_allow_origin: str?
   rc_stats: str?
-#image: ghcr.io/jcwillox/hassio-rclone-backup/{arch}
 ports:
   5572/tcp: null
 ports_description:
