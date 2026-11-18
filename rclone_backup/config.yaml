@@ -75,7 +75,7 @@ schema:
   rc_job_expire: str?
   rc_allow_origin: str?
   rc_stats: str?
-image: ghcr.io/jcwillox/hassio-rclone-backup/{arch}
+#image: ghcr.io/jcwillox/hassio-rclone-backup/{arch}
 ports:
   5572/tcp: null
 ports_description:
