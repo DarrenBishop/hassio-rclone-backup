@@ -1,11 +1,48 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Start the Rclone Web GUI
+# Start the Rclone Web GUI / remote-control (rc) daemon
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
-bashio::log.info "Starting Rclone Web GUI..."
-
-exec rclone rcd --rc-no-auth --rc-web-gui-no-open-browser \
-  --rc-addr ":8099" --rc-allow-origin "172.30.32.2" \
+# Base daemon: serves the Web GUI over Home Assistant ingress.
+args=(
+  rcd
+  --rc-web-gui-no-open-browser
+  --rc-addr ":8099"
   --rc-files "/usr/share/rclone-webui-react"
+)
+
+# Allowed CORS origin, defaults to the supervisor (ingress) so the Web GUI works.
+# Only override when reaching the rc API from a browser on a different origin.
+if bashio::config.has_value 'rc_allow_origin'; then
+  args+=(--rc-allow-origin "$(bashio::config 'rc_allow_origin')")
+else
+  args+=(--rc-allow-origin "172.30.32.2")
+fi
+
+if bashio::config.true 'remote_control'; then
+  # Authenticated remote control for external clients (e.g. CloneAssistant).
+  # A single rcd shares one auth mode, so the ingress Web GUI login now requires
+  # these same credentials instead of the password-less click-through.
+  if ! bashio::config.has_value 'rc_username' || ! bashio::config.has_value 'rc_password'; then
+    bashio::log.fatal "remote_control is enabled but rc_username/rc_password are not set."
+    bashio::log.fatal "Set both before exposing the rc API, or disable remote_control."
+    bashio::exit.nok
+  fi
+
+  job_expire=$(bashio::config 'rc_job_expire' '1h')
+
+  bashio::log.info "Starting Rclone rc daemon (remote control enabled, authenticated)..."
+  bashio::log.info "Expose a host port for '8099/tcp' in the Network panel to reach it from other machines."
+
+  args+=(
+    --rc-user "$(bashio::config 'rc_username')"
+    --rc-pass "$(bashio::config 'rc_password')"
+    --rc-job-expire-duration "${job_expire}"
+  )
+else
+  bashio::log.info "Starting Rclone Web GUI (ingress only, no authentication)..."
+  args+=(--rc-no-auth)
+fi
+
+exec rclone "${args[@]}"

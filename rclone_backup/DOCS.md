@@ -96,6 +96,24 @@ This will disable the slugification of backup names. This means the **user** is 
 
 Disable sending completion and failure events to Home Assistant.
 
+**Option:** `remote_control`
+
+Exposes the rclone [remote-control (rc) API](https://rclone.org/rc/) on the running daemon so external clients — such as the [CloneAssistant](https://github.com/nielash/cloneassistant) integration — can start, stop and monitor rclone jobs over the network. See [Using with CloneAssistant](#using-with-cloneassistant).
+
+When this is enabled you **must** set `rc_username` and `rc_password`, and the ingress Web UI login will require those same credentials. When disabled (the default) the daemon behaves exactly as before: ingress-only and password-less.
+
+**Option:** `rc_username` / `rc_password`
+
+The username and password required to authenticate against the rc API (and the Web UI) when `remote_control` is enabled. Enter the same values in the CloneAssistant integration.
+
+**Option:** `rc_job_expire`
+
+How long rclone keeps finished async job results so a client can poll them, see [`--rc-job-expire-duration`](https://rclone.org/rc/#job-expiry). Defaults to `1h`. CloneAssistant requires at least `1h` (rclone's own default of `60s` is too short); only change this if you know you need to.
+
+**Option:** `rc_allow_origin`
+
+Advanced/optional. Sets the allowed CORS origin for the rc API (`--rc-allow-origin`). Leave empty unless you access the rc API from a browser on a different origin; it defaults to the supervisor so the ingress Web UI works. CloneAssistant is a server-side client and does **not** need this.
+
 ## Job Config
 
 **Option:** `sources`
@@ -170,6 +188,40 @@ List of flags to give the rclone command, applied globally to all jobs. For use 
 The addon now supports ingress and the Rclone Web UI, you can access this by clicking the **Open Web UI** button in the addon info panel. You do not need a username or password and can just click the login button. Then you can click **Configs** -> **Create new config** to create a new remote.
 
 For more information, or to configure rclone without using the WebUI, you can consult the [rclone docs](https://rclone.org/docs/). The rclone config can be found at `/config/rclone.conf` by default.
+
+---
+
+## Using with CloneAssistant
+
+[CloneAssistant](https://github.com/nielash/cloneassistant) is a Home Assistant integration that lets you *control and monitor* recurring rclone jobs (`sync`, `bisync`, `check`, …) from dashboards — each job becomes a device with a switch, run-stat sensors and health/last-success sensors. Unlike this addon's scheduler (which shells out to the `rclone` binary on a cron), CloneAssistant is purely a **client of the rclone rc API**: it needs a running, authenticated `rclone rcd` it can reach over the network.
+
+This addon already runs `rclone rcd` to serve the Web UI, so you don't need a second rclone instance — you just need to expose that daemon with authentication. The addon does this by **piggy-backing on the existing GUI daemon**; no extra process and no extra memory.
+
+### Setup
+
+1. **Enable authenticated remote control.** In the addon **Configuration** tab set:
+
+   ```yaml
+   remote_control: true
+   rc_username: choose-a-username
+   rc_password: choose-a-strong-password
+   # rc_job_expire: 1h   # optional, this is the default
+   ```
+
+2. **Expose the rc port.** In the addon **Network** tab, assign a host port to the `8099/tcp` port (e.g. `5572`). This is what makes the API reachable from Home Assistant / other LAN machines.
+
+3. **Restart the addon.** The log should report *"remote control enabled, authenticated"*.
+
+4. **Add the integration in CloneAssistant** using:
+   - **Host:** `homeassistant.local:5572` (or `<your-HA-ip>:<the host port you assigned>`). Prefix with `https://` only if you put rclone behind a trusted TLS proxy — self-signed certs are not supported.
+   - **Username / Password:** the `rc_username` / `rc_password` you set above.
+   - **command / command_args:** the rc method and arguments for the job, e.g. command `sync/sync` with args `{ "srcFs": "/backup", "dstFs": "google:/Backup/Home Assistant" }`.
+
+> **Security**
+>
+> Exposing a host port publishes the rc API to your network — anyone who can reach that port **and** has the credentials can drive rclone against your remotes. Only assign the host port once `rc_username`/`rc_password` are set (the addon refuses to start with `remote_control` enabled but credentials missing), keep the credentials strong, and don't forward the port to the internet. For access across machines, [Tailscale](https://tailscale.com/) (as CloneAssistant's docs recommend) is safer than port-forwarding.
+>
+> Because a single `rclone rcd` has one authentication mode, enabling `remote_control` also means the **ingress Web UI** login requires these credentials instead of the password-less click-through.
 
 ---
 

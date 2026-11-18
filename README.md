@@ -9,6 +9,8 @@ You can also directly sync your Home Configuration e.g. `/config`, `/share`, `/s
 
 The addon also supports monitoring rclone and configuring or exploring remotes through [rclone-webui-react](https://github.com/rclone/rclone-webui-react).
 
+It can additionally expose rclone's authenticated [remote-control (rc) API](https://rclone.org/rc/) so integrations such as [CloneAssistant](https://github.com/nielash/cloneassistant) can start, stop and monitor rclone jobs from Home Assistant — reusing the daemon that already serves the Web UI, so there's no extra process. See [Using with CloneAssistant](rclone_backup/DOCS.md#using-with-cloneassistant).
+
 ![webui-example](https://github.com/jcwillox/hassio-rclone-backup/raw/main/example.png)
 
 ## Installation
