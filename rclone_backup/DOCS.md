@@ -229,7 +229,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -u USER:PASS -X POST http://<addon-host
 
 ### Watching a job run
 
-The rc daemon runs with `-vv` and `--stats=10s`, so when CloneAssistant triggers a job the per-operation activity and periodic transfer progress (bytes, ETA) are written to this addon's **Log** tab. CloneAssistant's own sensors (transfers, bytes, errors, duration) come from the same job via the rc API.
+The rc daemon runs with `-v --stats=10s --stats-one-line`, so when CloneAssistant triggers a job the per-file activity and periodic transfer progress (bytes, %, ETA — one line every 10s) are written to this addon's **Log** tab. `--stats` only sets the interval; `-v` is what makes the stats visible, since they log at INFO and the default NOTICE level hides them. (Swap `-v` for `-vv` in `rootfs/etc/services.d/rclone-rc/run` if you need debug-level detail.) CloneAssistant's own sensors (transfers, bytes, errors, duration) come from the same job via the rc API.
 
 ### Optional: access from another machine
 
