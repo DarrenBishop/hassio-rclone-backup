@@ -195,11 +195,13 @@ For more information, or to configure rclone without using the WebUI, you can co
 
 [CloneAssistant](https://github.com/nielash/cloneassistant) is a Home Assistant integration that lets you *control and monitor* recurring rclone jobs (`sync`, `bisync`, `check`, …) from dashboards — each job becomes a device with a switch, run-stat sensors and health/last-success sensors. Unlike this addon's scheduler (which shells out to the `rclone` binary on a cron), CloneAssistant is purely a **client of the rclone rc API**: it needs a running, authenticated `rclone rcd` it can reach over the network.
 
-Enabling `remote_control` starts a **dedicated rc API daemon on port `5572`**, authenticated with `rc_username`/`rc_password`. It runs alongside — but separately from — the daemon that serves the Web UI, so **the Web UI keeps its existing password-less ingress login**; only the network-exposed API requires credentials. The daemon shares the same rclone config and remotes.
+Enabling `remote_control` starts a **dedicated rc API daemon on port `5572`**, authenticated with `rc_username`/`rc_password`. It runs alongside — but separately from — the daemon that serves the Web UI, so **the Web UI keeps its existing password-less ingress login**; only this API requires credentials. The daemon binds all interfaces (`:5572`), so other containers on Home Assistant's internal `hassio` network — including Home Assistant Core, where CloneAssistant runs — can reach it **by hostname with no port publishing**. The daemon shares the same rclone config and remotes.
 
-> **Why a network port needs a password:** the rc API can run `sync`/`delete`/`move` against every configured remote. Once it's reachable on a port (rather than ingress, which Home Assistant gates), an unauthenticated daemon is effectively remote control of your storage for anyone on the network — so CloneAssistant (rightly) requires credentials.
+> **Why it still needs a password:** the rc API can run `sync`/`delete`/`move` against every configured remote, and the internal `hassio` network is shared by every add-on — so even without exposing a host port, CloneAssistant (rightly) requires credentials.
 
-### Setup
+### Setup (internal — recommended)
+
+Everything stays inside Home Assistant; no port is published.
 
 1. **Enable the rc API.** In the addon **Configuration** tab set:
 
@@ -210,18 +212,35 @@ Enabling `remote_control` starts a **dedicated rc API daemon on port `5572`**, a
    # rc_job_expire: 1h   # optional, this is the default
    ```
 
-2. **Expose the rc port.** In the addon **Network** tab, assign a host port to `5572/tcp` (e.g. `5572`). This is what makes the API reachable from Home Assistant / other LAN machines.
+2. **Restart the addon.** The log should report *"Starting Rclone rc API daemon on :5572 (authenticated)"*.
 
-3. **Restart the addon.** The log should report *"Starting Rclone rc API daemon on :5572 (authenticated)"*.
+3. **Find the addon's hostname.** On the `hassio` network each addon is resolvable at its slug with underscores replaced by dashes (local addons are prefixed `local-`). Confirm it by running `hostname` inside the addon container, e.g. `local-rclone-backup`. (The Docker *container* name, like `app_local_...`, is **not** a resolvable hostname — don't use it.)
 
 4. **Add the integration in CloneAssistant** using:
-   - **Host:** `homeassistant.local:5572` (or `<your-HA-ip>:<the host port you assigned>`). Prefix with `https://` only if you put rclone behind a trusted TLS proxy — self-signed certs are not supported.
+   - **Host:** `<addon-hostname>:5572`, e.g. `local-rclone-backup:5572`. No scheme — plain HTTP is the default. (Prefix `https://` only if rclone is behind a trusted TLS proxy; self-signed certs are not supported.)
    - **Username / Password:** the `rc_username` / `rc_password` you set above.
    - **command / command_args:** the rc method and arguments for the job, e.g. command `sync/sync` with args `{ "srcFs": "/backup", "dstFs": "google:/Backup/Home Assistant" }`.
 
+You can verify reachability from the **Advanced SSH & Web Terminal** addon (also on the `hassio` network):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -u USER:PASS -X POST http://<addon-hostname>:5572/rc/noopauth   # expect 200
+```
+
+### Watching a job run
+
+The rc daemon runs with `-vv` and `--stats=10s`, so when CloneAssistant triggers a job the per-operation activity and periodic transfer progress (bytes, ETA) are written to this addon's **Log** tab. CloneAssistant's own sensors (transfers, bytes, errors, duration) come from the same job via the rc API.
+
+### Optional: access from another machine
+
+If you want to reach the rc API from a device **outside** Home Assistant, publish the port instead of (or in addition to) using the internal hostname:
+
+1. In the addon **Network** tab, assign a host port to `5572/tcp`.
+2. Use **Host** `<your-HA-ip>:<the host port you assigned>` in CloneAssistant.
+
 > **Security**
 >
-> Exposing a host port publishes the rc API to your network — anyone who can reach that port **and** has the credentials can drive rclone against your remotes. Only assign the host port once `rc_username`/`rc_password` are set, keep the credentials strong, and don't forward the port to the internet. For access across machines, [Tailscale](https://tailscale.com/) (as CloneAssistant's docs recommend) is safer than port-forwarding.
+> Publishing a host port exposes the rc API beyond Home Assistant — anyone who can reach that port **and** has the credentials can drive rclone against your remotes. Only publish it when you need off-box access, keep the credentials strong, and don't forward the port to the internet. For access across machines, [Tailscale](https://tailscale.com/) (as CloneAssistant's docs recommend) is safer than port-forwarding. The internal setup above avoids all of this.
 
 ---
 
