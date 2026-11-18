@@ -24,19 +24,21 @@ job_expire=$(bashio::config 'rc_job_expire' '1h')
 
 args=(
   rcd
-  # -v (INFO) logs each file operation and lets the periodic --stats output
-  # through (stats are logged at INFO; the default NOTICE level hides them).
-  # --stats prints transfer progress (bytes, %, ETA) every 10s, one line each,
-  # so you can watch a triggered job's sync progress in the add-on Log tab.
-  # (Use -vv instead of -v for debug-level chatter when diagnosing failures.)
-  -v
-  --stats=10s
-  --stats-one-line
   --rc-addr ":5572"
   --rc-user "$(bashio::config 'rc_username')"
   --rc-pass "$(bashio::config 'rc_password')"
   --rc-job-expire-duration "${job_expire}"
 )
+
+# Progress logging. The 'rc_stats' interval (e.g. 10s) sets how often transfer
+# progress (bytes, %, ETA) is printed to this daemon's log while a triggered
+# job runs. -v is required for it to show (stats log at INFO; the default
+# NOTICE level hides them), so it's added alongside --stats. When 'rc_stats' is
+# empty, no progress or per-operation output is shown at all.
+# (Swap -v for -vv here if you need debug-level detail when diagnosing failures.)
+if bashio::config.has_value 'rc_stats'; then
+  args+=(-v --stats="$(bashio::config 'rc_stats')" --stats-one-line)
+fi
 
 # Optional CORS origin, only needed when a browser on another origin hits the
 # rc API directly. Server-side clients like CloneAssistant don't need it.

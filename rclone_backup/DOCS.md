@@ -114,6 +114,10 @@ How long rclone keeps finished async job results so a client can poll them, see 
 
 Advanced/optional. Sets the allowed CORS origin for the rc API daemon (`--rc-allow-origin`). Leave empty unless you access the rc API from a browser on a different origin. CloneAssistant is a server-side client and does **not** need this.
 
+**Option:** `rc_stats`
+
+How often the rc API daemon prints transfer progress (bytes, %, ETA) to its log while a triggered job runs, as an rclone duration (e.g. `10s`, `30s`). Defaults to `10s`. **Leave it empty to show no progress or per-operation output at all.** When set, the daemon also runs at `-v` so the stats are visible (rclone logs stats at `INFO`, which the default `NOTICE` level would otherwise hide). See [Watching a job run](#watching-a-job-run).
+
 ## Job Config
 
 **Option:** `sources`
@@ -229,7 +233,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -u USER:PASS -X POST http://<addon-host
 
 ### Watching a job run
 
-The rc daemon runs with `-v --stats=10s --stats-one-line`, so when CloneAssistant triggers a job the per-file activity and periodic transfer progress (bytes, %, ETA — one line every 10s) are written to this addon's **Log** tab. `--stats` only sets the interval; `-v` is what makes the stats visible, since they log at INFO and the default NOTICE level hides them. (Swap `-v` for `-vv` in `rootfs/etc/services.d/rclone-rc/run` if you need debug-level detail.) CloneAssistant's own sensors (transfers, bytes, errors, duration) come from the same job via the rc API.
+When the [`rc_stats`](#option-rc_stats) interval is set (default `10s`), the rc daemon runs with `-v --stats=<rc_stats> --stats-one-line`, so when CloneAssistant triggers a job the per-file activity and periodic transfer progress (bytes, %, ETA — one line per interval) are written to this addon's **Log** tab. `--stats` only sets the interval; `-v` is what makes the stats visible, since they log at `INFO` and the default `NOTICE` level hides them. **Clear `rc_stats` to show nothing.** (Swap `-v` for `-vv` in `rootfs/etc/services.d/rclone-rc/run` if you need debug-level detail.) CloneAssistant's own sensors (transfers, bytes, errors, duration) come from the same job via the rc API regardless of this setting.
 
 ### Optional: access from another machine
 

@@ -39,6 +39,7 @@ options:
   remote_control: false
   rc_username: ""
   rc_password: ""
+  rc_stats: "10s"
 schema:
   jobs:
     - name: str?
@@ -73,6 +74,7 @@ schema:
   rc_password: password?
   rc_job_expire: str?
   rc_allow_origin: str?
+  rc_stats: str?
 image: ghcr.io/jcwillox/hassio-rclone-backup/{arch}
 ports:
   5572/tcp: null
