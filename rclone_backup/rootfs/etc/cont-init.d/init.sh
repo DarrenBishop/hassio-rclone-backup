@@ -3,7 +3,7 @@
 CONFIG_PATH="/homeassistant/rclone.conf"
 
 # backwards compatible with config directory
-ln -s "/homeassistant" "/config" \
+ln -snf "/homeassistant" "/config" \
     || bashio::log.warning "Failed linking common directory: /config"
 
 if bashio::config.has_value "rclone_config"; then
