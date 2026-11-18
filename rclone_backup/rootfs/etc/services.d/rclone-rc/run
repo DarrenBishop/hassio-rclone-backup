@@ -24,11 +24,14 @@ job_expire=$(bashio::config 'rc_job_expire' '1h')
 
 args=(
   rcd
-  # -vv (debug) logs each operation; --stats prints periodic transfer
-  # progress (bytes, ETA) to this daemon's log while a triggered job runs,
-  # so you can watch sync progress in the add-on Log tab.
-  -vv
+  # -v (INFO) logs each file operation and lets the periodic --stats output
+  # through (stats are logged at INFO; the default NOTICE level hides them).
+  # --stats prints transfer progress (bytes, %, ETA) every 10s, one line each,
+  # so you can watch a triggered job's sync progress in the add-on Log tab.
+  # (Use -vv instead of -v for debug-level chatter when diagnosing failures.)
+  -v
   --stats=10s
+  --stats-one-line
   --rc-addr ":5572"
   --rc-user "$(bashio::config 'rc_username')"
   --rc-pass "$(bashio::config 'rc_password')"
