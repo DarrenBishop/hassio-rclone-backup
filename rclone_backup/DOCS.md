@@ -257,6 +257,8 @@ curl -u USER:PASS -X POST http://<host>:5572/core/version   # -> {"version":"v1.
 
 Test from a machine *other than* the add-on container (the SSH add-on, or any LAN host) against the **published** host port — that mirrors how CloneAssistant connects. A `docker exec` into the add-on only proves the daemon is up inside its own container.
 
+> **Host value for CloneAssistant:** use an address Home Assistant Core can resolve — the HA host's `IP:port` (with `5572/tcp` published in the **Network** tab) or the add-on's network hostname (e.g. `local-<slug-with-dashes>`). The Docker **container name** (`app_local_...`) is *not* resolvable from Core and fails with `Name has no usable address`.
+
 ---
 
 ## Events
