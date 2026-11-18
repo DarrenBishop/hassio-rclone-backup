@@ -1,0 +1,42 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start a dedicated Rclone remote-control (rc) API daemon.
+#
+# This is a separate process from the Web GUI daemon (services.d/rclone) so the
+# GUI keeps its password-less ingress login untouched. It only starts when
+# 'remote_control' is enabled; otherwise it idles so neither it nor the add-on
+# is affected.
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+# ==============================================================================
+
+if ! bashio::config.true 'remote_control'; then
+  bashio::log.info "Remote control disabled; rc API daemon not started."
+  exec sleep infinity
+fi
+
+if ! bashio::config.has_value 'rc_username' || ! bashio::config.has_value 'rc_password'; then
+  bashio::log.error "remote_control is enabled but rc_username/rc_password are not set."
+  bashio::log.error "Set both to start the rc API daemon; the Web GUI and scheduler keep running."
+  exec sleep infinity
+fi
+
+job_expire=$(bashio::config 'rc_job_expire' '1h')
+
+args=(
+  rcd
+  --rc-addr ":5572"
+  --rc-user "$(bashio::config 'rc_username')"
+  --rc-pass "$(bashio::config 'rc_password')"
+  --rc-job-expire-duration "${job_expire}"
+)
+
+# Optional CORS origin, only needed when a browser on another origin hits the
+# rc API directly. Server-side clients like CloneAssistant don't need it.
+if bashio::config.has_value 'rc_allow_origin'; then
+  args+=(--rc-allow-origin "$(bashio::config 'rc_allow_origin')")
+fi
+
+bashio::log.info "Starting Rclone rc API daemon on :5572 (authenticated)..."
+bashio::log.info "Assign a host port to '5572/tcp' in the Network panel to reach it from other machines."
+
+exec rclone "${args[@]}"

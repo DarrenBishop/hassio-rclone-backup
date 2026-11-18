@@ -36,6 +36,9 @@ options:
       flags: {}
   dry_run: true
   config_path: "/homeassistant/rclone.conf"
+  remote_control: false
+  rc_username: ""
+  rc_password: ""
 schema:
   jobs:
     - name: str?
@@ -65,7 +68,20 @@ schema:
   no_unrename: bool?
   no_slugify: bool?
   log_level: list(debug|info|warning|error|fatal)?
+  remote_control: bool?
+  rc_username: str?
+  rc_password: password?
+  rc_job_expire: str?
+  rc_allow_origin: str?
 image: ghcr.io/jcwillox/hassio-rclone-backup/{arch}
+ports:
+  5572/tcp: null
+ports_description:
+  5572/tcp: >-
+    Rclone remote-control (rc) API — a dedicated authenticated daemon for
+    network clients such as the CloneAssistant integration. The Web UI is
+    unaffected (ingress only). Only assign a host port after enabling
+    "remote_control" and setting rc_username/rc_password.
 devices:
   - /dev/fuse
 privileged:
